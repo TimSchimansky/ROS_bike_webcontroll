@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>WCMM</title>
+
+
+    <script type="text/javascript" src="http://static.robotwebtools.org/EventEmitter2/current/eventemitter2.min.js"></script>
+    <script type="text/javascript" src="http://static.robotwebtools.org/roslibjs/current/roslib.min.js"></script>
+
+
+    <script type="text/javascript" type="text/javascript">
+        // Connecting to rosbridge_websocket -----------------------------------
+        var ros = new ROSLIB.Ros({
+            url : 'ws://' + location.hostname + ':9090' //url : 'ws://192.168.178.61:9090' //url : 'ws://Tower04.local:9090'
+        });
+
+        // Log event to browser console
+        ros.on('connection', function() {
+          // Assemble status indication
+          var statusString = 'Connected to websocket server on ' + location.hostname + ':9090 .';
+
+          // Put out Message
+          console.log(statusString);
+          document.getElementById("statusDiv").innerHTML = statusString;
+          document.getElementById("statusDiv").setAttribute("class", "text good");
+        });
+
+        ros.on('error', function(error) {
+          // Assemble status indication
+          var statusString = 'Error connecting to websocket server: ' + error;
+
+          // Put out Message
+          console.log(statusString);
+          document.getElementById("statusDiv").innerHTML = statusString;
+          document.getElementById("statusDiv").setAttribute("class", "text bad");
+        });
+
+        ros.on('close', function() {
+          // Assemble status indication
+          var statusString = 'Connection to websocket server closed.';
+
+          // Put out Message
+          console.log(statusString);
+          document.getElementById("statusDiv").innerHTML = statusString;
+          document.getElementById("statusDiv").setAttribute("class", "text bad");
+        });
+
+        // Publishing topics ---------------------------------------------------
+        // Publishing is done in second script block
+        // Creating new topic
+        var cmdRosbagRecord = new ROSLIB.Topic({
+          ros : ros,
+          name : '/cmd_record_toggle',
+          messageType : 'std_msgs/Bool'
+        });
+
+        // Create messages for triggering
+        var boolTrueMsg = new ROSLIB.Message({
+          data : true
+        });
+        var boolFalseMsg = new ROSLIB.Message({
+          data : false
+        });
+
+        // Calling remote recording service ------------------------------------
+        var recordingRobotState = false;
+
+        var remoteRecordingServiceStart = new ROSLIB.Service({
+          ros : ros,
+          name : '/start',
+          serviceType : '/remote_recording/start'
+        })
+
+        var remoteRecordingServiceStop = new ROSLIB.Service({
+          ros : ros,
+          name : '/stop',
+          serviceType : '/remote_recording/stop'
+        })
+
+        var emptyRequest = new ROSLIB.ServiceRequest({})
+
+
+        function publishRecordToggleMessage(rosMsg){
+          cmdRosbagRecord.publish(rosMsg);
+
+          if (recordingRobotState == false) {
+            // Log the action, that is about to happen
+            console.log('Recording started');
+
+            // Call remote recording service to start
+            remoteRecordingServiceStart.callService(emptyRequest);
+
+          } else {
+            // Log the action, that is about to happen
+            console.log('Recording stopped');
+
+            // Call remote recording service to stop
+            remoteRecordingServiceStop.callService(emptyRequest);
+          }
+        }
+
+        // Subscribing to a topic ----------------------------------------------
+        var listenerRosbagRecord = new ROSLIB.Topic({
+          ros : ros,
+          name : '/is_recording',
+          messageType : 'std_msgs/Bool'
+        });
+
+        listenerRosbagRecord.subscribe(function(message) {
+          // Log recording info
+          console.log('Recording is running: ' + message.data);
+
+          // Save state in variable
+          recordingRobotState = message.data;
+
+          // Change appearance of record button
+          //##############################################################################
+        });
+
+        // Getting list of active topics -----------------------------
+        ros.getTopics(function(params) {
+          var topicArray = params['topics'];
+          console.log(topicArray);
+
+          // Create table
+          var topicTable = document.createElement("table"), row = topicTable.insertRow(), cell;
+
+          // Iterate over array
+          topicArray.forEach((value) => {
+            // Add cell
+            cell = row.insertCell();
+            cell.innerHTML = value;
+            row = topicTable.insertRow();
+          });
+
+          // Put array content as table into div container
+          document.getElementById("topicListDiv").appendChild(topicTable);
+        });
+
+        // Getting list of active nodes -----------------------------
+        ros.getNodes(function(nodeArray) {
+          console.log(nodeArray);
+
+          // Create table
+          var nodeTable = document.createElement("table"), row = nodeTable.insertRow(), cell;
+
+          // Iterate over array
+          nodeArray.forEach((value) => {
+            // Add cell
+            cell = row.insertCell();
+            cell.innerHTML = value;
+            row = nodeTable.insertRow();
+          });
+          // Put array content as table into div container
+          document.getElementById("nodeListDiv").appendChild(nodeTable);
+        });
+</script>
+
+<style>
+body {
+  font-family: Helvetica;
+}
+
+h1 {
+  background-color: #0B6373;
+  border-radius: .4em;
+  color: white;
+  padding: 12px 30px;
+  text-align: center;
+}
+
+.button {
+  border: none;
+  border-radius: .4em;
+  color: white;
+  padding: 12px 30px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 16px;
+  margin: 4px 2px;
+  cursor: pointer;
+  background-color: #4CAF50;
+}
+
+.good {
+  border-radius: .4em;
+  background-color: #95C371;
+  padding: 3px 5px;
+}
+.bad {
+  border-radius: .4em;
+  color: white;
+  background-color: #AC4B41;
+  padding: 3px 5px;
+}
+
+.table{
+  background: #34495E;
+  color: white;
+  padding: 3px 5px;
+  border-radius: .4em;
+  overflow: hidden;
+  tr {
+    border-color: lighten(#34495E, 10%);
+  }
+  th, td {
+    margin: .5em 1em;
+    @media (min-width: $breakpoint-alpha) {
+      padding: 1em !important;
+    }
+  }
+  th, td:before {
+    color: #dd5;
+  }
+}
+</style>
+
+</head>
+<body>
+    <h1 class="headline primary">WCMM</h1>
+
+    <h2 class="headline secondary">Connection status</h2>
+    <div id="statusDiv"></div>
+
+    <h2 class="headline secondary">Toggle rosbag recording</h2>
+    <button type="button" class="button" id="recordButton">Toggle</button>
+
+    <h2 class="headline secondary">List active topics</h2>
+    <div class="table" id="topicListDiv"></div>
+
+    <h2 class="headline secondary">List active nodes</h2>
+    <div class="table" id="nodeListDiv"></div>
+</body>
+
+
+<script>
+  document.getElementById("recordButton").addEventListener("mousedown", function() {publishRecordToggleMessage(boolTrueMsg);});
+  //document.getElementById("recordButton").addEventListener("mouseup", function() {publishRecordToggleMessage(boolFalseMsg);});
+
+
+
+
+
+
+
+</script>
+
+
+</html>

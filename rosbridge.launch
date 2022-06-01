@@ -1,18 +1,16 @@
 <launch>
-
-
+  <!-- Node for remote recording -->
   <node name="remote_recording" pkg="remote_rosbag_record" type="record" respawn="true">
     <rosparam file="topics.yml"/>
     <param name="prefix" value="trajectory"/>
     <param name="apped_date" value="true"/>
   </node>
 
+  <!-- Launching secondary launch file for rosbridge and rosapi -->
   <include file="$(find rosbridge_server)/launch/rosbridge_websocket.launch" />
 
+  <!-- Node made with python for serving http to connected browsers -->
   <node pkg="mobile_mapping_webcontroll" name="http_server" type="http_server.py" output="screen">
     <param name="html_file" value="$(find mobile_mapping_webcontroll)/html"/>
   </node>
-
-
-
 </launch>

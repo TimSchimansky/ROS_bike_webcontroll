@@ -115,8 +115,17 @@
           // Save state in variable
           recordingRobotState = message.data;
 
-          // Change appearance of record button
-          //##############################################################################
+          // Change appearance of record button and status indicator
+          if (recordingRobotState == false) {
+            document.getElementById("recordButton").setAttribute("class", "button stopped");
+            document.getElementById("recordStatus").innerHTML = "Recording is stopped!";
+
+          } else {
+            document.getElementById("recordButton").setAttribute("class", "button running");
+
+            var current = new Date();
+            document.getElementById("recordStatus").innerHTML = "Recording is running since (at least): " + current.toLocaleTimeString();;
+          }
         });
 
         // Getting list of active topics -----------------------------
@@ -182,6 +191,13 @@ h1 {
   font-size: 16px;
   margin: 4px 2px;
   cursor: pointer;
+}
+
+.running {
+  background-color: #AC4B41;
+}
+
+.stopped {
   background-color: #4CAF50;
 }
 
@@ -226,7 +242,10 @@ h1 {
     <div id="statusDiv"></div>
 
     <h2 class="headline secondary">Toggle rosbag recording</h2>
-    <button type="button" class="button" id="recordButton">Toggle</button>
+    <div style="display:flex;">
+      <button type="button" class="button stopped" id="recordButton">Toggle</button>
+      <p id="recordStatus"></p>
+    </div>
 
     <h2 class="headline secondary">List active topics</h2>
     <div class="table" id="topicListDiv"></div>
@@ -238,15 +257,6 @@ h1 {
 
 <script>
   document.getElementById("recordButton").addEventListener("mousedown", function() {publishRecordToggleMessage(boolTrueMsg);});
-  //document.getElementById("recordButton").addEventListener("mouseup", function() {publishRecordToggleMessage(boolFalseMsg);});
-
-
-
-
-
-
-
 </script>
-
 
 </html>

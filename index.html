@@ -110,13 +110,20 @@
 
         listenerRosbagRecord.subscribe(function(message) {
           // Log recording info
-          console.log('Recording is running: ' + message.data);
+          console.log('Recording is gg running: ' + message.data);
 
           // Save state in variable
           recordingRobotState = message.data;
 
+          console.log('Button green');
           // Change appearance of record button
-          //##############################################################################
+          if (recordingRobotState == false) {
+            document.getElementById("recordButton").setAttribute("class", "button stopped");
+
+          } else {
+            document.getElementById("recordButton").setAttribute("class", "button running");
+            console.log('Button red');
+          }
         });
 
         // Getting list of active topics -----------------------------
@@ -182,6 +189,13 @@ h1 {
   font-size: 16px;
   margin: 4px 2px;
   cursor: pointer;
+}
+
+.running {
+  background-color: #AC4B41;
+}
+
+.stopped {
   background-color: #4CAF50;
 }
 
@@ -226,7 +240,7 @@ h1 {
     <div id="statusDiv"></div>
 
     <h2 class="headline secondary">Toggle rosbag recording</h2>
-    <button type="button" class="button" id="recordButton">Toggle</button>
+    <button type="button" class="button stopped" id="recordButton">Toggle</button>
 
     <h2 class="headline secondary">List active topics</h2>
     <div class="table" id="topicListDiv"></div>

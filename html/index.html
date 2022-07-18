@@ -11,6 +11,31 @@
 
 
     <script type="text/javascript" type="text/javascript">
+        // Global variables ----------------------------------------------------
+        var UserCMDService;
+
+        var recordIsOn = false;
+
+        var SUCCESS = 0; //serviceReponse if the request succeeded
+
+        var REQ_STATUS    = 0; //ask for the datalogger status (i.e. recording on or off)
+        var REQ_REC_START = 1; // start recording
+        var REQ_REC_STOP  = 2; // stop recording
+
+        var STATUS_RECORD_ON  = 1; // recording on status (state_id response from the service)
+        var STATUS_RECORD_OFF = 0; // recording off status (state_id response from the service)
+
+        // create the requests for the service
+        var statusRequest = new ROSLIB.ServiceRequest({
+          request_id : REQ_STATUS
+        });
+        var startRecordRequest = new ROSLIB.ServiceRequest({
+          request_id : REQ_REC_START
+        });
+        var stopRecordRequest = new ROSLIB.ServiceRequest({
+          request_id : REQ_REC_STOP
+        });
+
         // Connecting to rosbridge_websocket -----------------------------------
         var ros = new ROSLIB.Ros({
             url : 'ws://' + location.hostname + ':9090' //url : 'ws://192.168.178.61:9090' //url : 'ws://Tower04.local:9090'
@@ -47,86 +72,76 @@
           document.getElementById("statusDiv").setAttribute("class", "text bad");
         });
 
-        // Publishing topics ---------------------------------------------------
-        // Publishing is done in second script block
-        // Creating new topic
-        var cmdRosbagRecord = new ROSLIB.Topic({
-          ros : ros,
-          name : '/cmd_record_toggle',
-          messageType : 'std_msgs/Bool'
+        UserCMDService = connectToService('/user_cmd','remote_bag_logging/UserCmd');
+        UserCMDService.callService(statusRequest, function(response){
+          console.log(response)
+          switch (response.state_id){
+            case STATUS_RECORD_ON:
+            setRecordOnStyle(recordButton);
+            recordIsOn = true;
+
+            break;
+            case STATUS_RECORD_OFF:
+            setRecordOffStyle(recordButton);
+
+            break;
+          }
         });
 
-        // Create messages for triggering
-        var boolTrueMsg = new ROSLIB.Message({
-          data : true
-        });
-        var boolFalseMsg = new ROSLIB.Message({
-          data : false
-        });
+        function connectToService(serviceName, serviceType){
+          return new ROSLIB.Service({
+            ros : ros,
+            name : serviceName,
+            serviceType : serviceType
+          });
+        }
 
-        // Calling remote recording service ------------------------------------
-        var recordingRobotState = false;
+        // hasClass function copied from jQuery
+        function hasClass(element, selector){
+          var className = " " + selector + " ";
+          return (" " + element.className + " ").replace(/[\n\t]/g, " ").indexOf(className) > -1;
+        }
 
-        var remoteRecordingServiceStart = new ROSLIB.Service({
-          ros : ros,
-          name : '/start',
-          serviceType : '/remote_recording/start'
-        })
-
-        var remoteRecordingServiceStop = new ROSLIB.Service({
-          ros : ros,
-          name : '/stop',
-          serviceType : '/remote_recording/stop'
-        })
-
-        var emptyRequest = new ROSLIB.ServiceRequest({})
-
-
-        function publishRecordToggleMessage(rosMsg){
-          cmdRosbagRecord.publish(rosMsg);
-
-          if (recordingRobotState == false) {
-            // Log the action, that is about to happen
-            console.log('Recording started');
-
-            // Call remote recording service to start
-            remoteRecordingServiceStart.callService(emptyRequest);
-
+        // Handle remote recording through remote_bag_logging node and UserCmd service
+        // toggle function, to toggle the class recordOn/recordOff of the recordButton
+        function toggleRecord(){
+          if (recordIsOn == true){
+            setRecordOff();
           } else {
-            // Log the action, that is about to happen
-            console.log('Recording stopped');
-
-            // Call remote recording service to stop
-            remoteRecordingServiceStop.callService(emptyRequest);
+            setRecordOn();
           }
         }
 
-        // Subscribing to a topic ----------------------------------------------
-        var listenerRosbagRecord = new ROSLIB.Topic({
-          ros : ros,
-          name : '/is_recording',
-          messageType : 'std_msgs/Bool'
-        });
+        // set record on, starts recording via the service and change the recordButton class if the request succeeded
+        function setRecordOn(){
+          UserCMDService.callService(startRecordRequest, function(response){
+            if (response.msg_id == SUCCESS){
+              setRecordOnStyle();
+              recordIsOn = true;
+        }
+          });
+        }
 
-        listenerRosbagRecord.subscribe(function(message) {
-          // Log recording info
-          console.log('Recording is running: ' + message.data);
+        function setRecordOnStyle(){
+          var current = new Date();
+          document.getElementById("recordButton").innerHTML = "Recording is running since (at least): " + current.toLocaleTimeString();
+          document.getElementById("recordButton").setAttribute("class", "button running");
+        }
 
-          // Save state in variable
-          recordingRobotState = message.data;
+        // set record on, starts recording via the service and change the recordButton class if the request succeeded
+        function setRecordOff(){
+          UserCMDService.callService(stopRecordRequest, function(response){
+            if (response.msg_id == SUCCESS){
+              setRecordOffStyle();
+              recordIsOn = false;
+            }
+          });
+        }
 
-          // Change appearance of record button and status indicator
-          if (recordingRobotState == false) {
-            document.getElementById("recordButton").setAttribute("class", "button stopped");
-            document.getElementById("recordStatus").innerHTML = "Recording is stopped!";
-
-          } else {
-            document.getElementById("recordButton").setAttribute("class", "button running");
-
-            var current = new Date();
-            document.getElementById("recordStatus").innerHTML = "Recording is running since (at least): " + current.toLocaleTimeString();;
-          }
-        });
+        function setRecordOffStyle(){
+          document.getElementById("recordButton").innerHTML = 'Recording OFF';
+          document.getElementById("recordButton").setAttribute("class", "button stopped");
+        }
 
         // Getting list of active topics -----------------------------
         ros.getTopics(function(params) {
@@ -256,7 +271,7 @@ h1 {
 
 
 <script>
-  document.getElementById("recordButton").addEventListener("mousedown", function() {publishRecordToggleMessage(boolTrueMsg);});
+  document.getElementById("recordButton").addEventListener("mousedown", function(){toggleRecord();});
 </script>
 
 </html>
